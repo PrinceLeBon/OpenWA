@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { SessionService } from './session.service';
 import { Session, SessionStatus } from './entities/session.entity';
@@ -30,6 +30,7 @@ function createMockSession(overrides: Partial<Session> = {}): Session {
 describe('SessionService', () => {
   let service: SessionService;
   let repository: jest.Mocked<Partial<Repository<Session>>>;
+  let dataSource: jest.Mocked<Partial<DataSource>>;
   let engineFactory: jest.Mocked<Partial<EngineFactory>>;
   let eventsGateway: jest.Mocked<Partial<EventsGateway>>;
   let webhookService: jest.Mocked<Partial<WebhookService>>;
@@ -45,6 +46,16 @@ describe('SessionService', () => {
       save: jest.fn(),
       remove: jest.fn(),
       update: jest.fn(),
+    };
+
+    dataSource = {
+      transaction: jest.fn().mockImplementation(async (cb: (manager: unknown) => Promise<unknown>) => {
+        const manager = {
+          save: jest.fn().mockImplementation((entity: unknown) => Promise.resolve(entity)),
+          remove: jest.fn().mockResolvedValue(undefined),
+        };
+        return cb(manager);
+      }),
     };
 
     mockEngine = {
@@ -78,6 +89,10 @@ describe('SessionService', () => {
         {
           provide: getRepositoryToken(Session, 'data'),
           useValue: repository,
+        },
+        {
+          provide: getDataSourceToken('data'),
+          useValue: dataSource,
         },
         { provide: EngineFactory, useValue: engineFactory },
         { provide: EventsGateway, useValue: eventsGateway },
@@ -172,10 +187,9 @@ describe('SessionService', () => {
 
       await service.delete('sess-uuid-1');
 
-      expect(repository.remove).toHaveBeenCalledWith(session);
       expect(hookManager.execute).toHaveBeenCalledWith(
         'session:deleted',
-        expect.objectContaining({ sessionId: 'sess-uuid-1' }),
+        expect.objectContaining({ id: 'sess-uuid-1', name: 'test-session' }),
         expect.any(Object),
       );
     });

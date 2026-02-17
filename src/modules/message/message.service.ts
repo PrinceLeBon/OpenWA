@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { SessionService } from '../session/session.service';
 import { SendTextMessageDto, SendMediaMessageDto, MessageResponseDto } from './dto';
 import { MediaInput } from '../../engine/interfaces/whatsapp-engine.interface';
-import { Message, MessageDirection } from './entities/message.entity';
+import { Message, MessageDirection, MessageStatus } from './entities/message.entity';
 import { HookManager } from '../../core/hooks';
 
 export interface GetMessagesOptions {
@@ -39,17 +39,21 @@ export class MessageService {
 
     const engine = this.getEngine(sessionId);
 
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
+      chatId: finalDto.chatId,
+      body: finalDto.text,
+      type: 'text',
+    });
+
     try {
       const result = await engine.sendTextMessage(finalDto.chatId, finalDto.text);
 
-      // Save to history
-      await this.saveOutgoingMessage(sessionId, {
-        waMessageId: result.id,
-        chatId: finalDto.chatId,
-        body: finalDto.text,
-        type: 'text',
-        timestamp: result.timestamp,
-      });
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
 
       // Execute hook after successful send
       await this.hookManager.execute(
@@ -63,6 +67,10 @@ export class MessageService {
         timestamp: result.timestamp,
       };
     } catch (error) {
+      // Mark as failed
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+
       // Execute hook on failure
       await this.hookManager.execute(
         'message:failed',
@@ -77,76 +85,124 @@ export class MessageService {
   async sendImage(sessionId: string, dto: SendMediaMessageDto): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
     const media = this.buildMediaInput(dto);
-    const result = await engine.sendImageMessage(dto.chatId, media);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       body: dto.caption || '',
       type: 'image',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendImageMessage(dto.chatId, media);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async sendVideo(sessionId: string, dto: SendMediaMessageDto): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
     const media = this.buildMediaInput(dto);
-    const result = await engine.sendVideoMessage(dto.chatId, media);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       body: dto.caption || '',
       type: 'video',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendVideoMessage(dto.chatId, media);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async sendAudio(sessionId: string, dto: SendMediaMessageDto): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
     const media = this.buildMediaInput(dto);
-    const result = await engine.sendAudioMessage(dto.chatId, media);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       type: 'audio',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendAudioMessage(dto.chatId, media);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async sendDocument(sessionId: string, dto: SendMediaMessageDto): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
     const media = this.buildMediaInput(dto);
-    const result = await engine.sendDocumentMessage(dto.chatId, media);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       body: dto.filename || '',
       type: 'document',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendDocumentMessage(dto.chatId, media);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   /**
@@ -180,25 +236,37 @@ export class MessageService {
     dto: { chatId: string; latitude: number; longitude: number; description?: string; address?: string },
   ): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
-    const result = await engine.sendLocationMessage(dto.chatId, {
-      latitude: dto.latitude,
-      longitude: dto.longitude,
-      description: dto.description,
-      address: dto.address,
-    });
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       body: `📍 ${dto.description || 'Location'}`,
       type: 'location',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendLocationMessage(dto.chatId, {
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        description: dto.description,
+        address: dto.address,
+      });
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async sendContact(
@@ -206,41 +274,65 @@ export class MessageService {
     dto: { chatId: string; contactName: string; contactNumber: string },
   ): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
-    const result = await engine.sendContactMessage(dto.chatId, {
-      name: dto.contactName,
-      number: dto.contactNumber,
-    });
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       body: `📇 ${dto.contactName}`,
       type: 'contact',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendContactMessage(dto.chatId, {
+        name: dto.contactName,
+        number: dto.contactNumber,
+      });
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async sendSticker(sessionId: string, dto: SendMediaMessageDto): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
     const media = this.buildMediaInput(dto);
-    const result = await engine.sendStickerMessage(dto.chatId, media);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       type: 'sticker',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.sendStickerMessage(dto.chatId, media);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async reply(
@@ -248,20 +340,32 @@ export class MessageService {
     dto: { chatId: string; quotedMessageId: string; text: string },
   ): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
-    const result = await engine.replyToMessage(dto.chatId, dto.quotedMessageId, dto.text);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.chatId,
       body: dto.text,
       type: 'text',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.replyToMessage(dto.chatId, dto.quotedMessageId, dto.text);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   async forward(
@@ -269,20 +373,32 @@ export class MessageService {
     dto: { fromChatId: string; toChatId: string; messageId: string },
   ): Promise<MessageResponseDto> {
     const engine = this.getEngine(sessionId);
-    const result = await engine.forwardMessage(dto.fromChatId, dto.toChatId, dto.messageId);
 
-    await this.saveOutgoingMessage(sessionId, {
-      waMessageId: result.id,
+    // Save message as pending BEFORE sending
+    const message = await this.saveOutgoingMessage(sessionId, {
       chatId: dto.toChatId,
       body: '[Forwarded]',
       type: 'forward',
-      timestamp: result.timestamp,
     });
 
-    return {
-      messageId: result.id,
-      timestamp: result.timestamp,
-    };
+    try {
+      const result = await engine.forwardMessage(dto.fromChatId, dto.toChatId, dto.messageId);
+
+      // Update with actual WhatsApp message ID and status
+      message.waMessageId = result.id;
+      message.status = MessageStatus.SENT;
+      message.timestamp = result.timestamp;
+      await this.messageRepository.save(message);
+
+      return {
+        messageId: result.id,
+        timestamp: result.timestamp,
+      };
+    } catch (error) {
+      message.status = MessageStatus.FAILED;
+      await this.messageRepository.save(message);
+      throw error;
+    }
   }
 
   /**
@@ -298,16 +414,18 @@ export class MessageService {
   }
 
   /**
-   * Save outgoing message after successful send
+   * Save outgoing message to database.
+   * When called before sending, creates a record with PENDING status.
    */
   private async saveOutgoingMessage(
     sessionId: string,
     data: {
-      waMessageId: string;
+      waMessageId?: string;
       chatId: string;
       body?: string;
       type: string;
-      timestamp: number;
+      timestamp?: number;
+      status?: MessageStatus;
     },
   ): Promise<Message> {
     const session = await this.sessionService.findOne(sessionId);
@@ -321,6 +439,7 @@ export class MessageService {
       type: data.type,
       direction: MessageDirection.OUTGOING,
       timestamp: data.timestamp,
+      status: data.status ?? MessageStatus.PENDING,
     });
     return this.messageRepository.save(message);
   }
