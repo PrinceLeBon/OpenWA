@@ -14,7 +14,7 @@ export interface LogContext {
   webhookId?: string;
   action?: string;
   duration?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 @Injectable({ scope: Scope.TRANSIENT })

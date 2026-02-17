@@ -18,7 +18,7 @@ export interface WebhookPayload {
   sessionId: string;
   idempotencyKey: string;
   deliveryId: string;
-  data: any;
+  data: Record<string, unknown>;
 }
 
 export interface WebhookJobData {

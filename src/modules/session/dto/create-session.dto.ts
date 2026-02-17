@@ -21,7 +21,7 @@ export class CreateSessionDto {
     example: { autoReconnect: true },
   })
   @IsOptional()
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 
   // Phase 3: Proxy per session
   @ApiPropertyOptional({

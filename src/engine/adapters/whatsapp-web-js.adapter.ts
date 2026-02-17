@@ -28,6 +28,13 @@ import {
   PaginatedProducts,
 } from '../interfaces/whatsapp-engine.interface';
 import { createLogger } from '../../common/services/logger.service';
+import {
+  GroupChat,
+  MessageWithReactions,
+  BusinessClient,
+  WwjsChannelData,
+  GroupCreateResult,
+} from '../types/whatsapp-web-js.types';
 
 export interface WhatsAppWebJsConfig {
   sessionId: string;
@@ -360,12 +367,17 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     // Filter only group chats
     const groups = chats.filter(chat => chat.isGroup);
 
-    return groups.map(g => ({
-      id: g.id._serialized,
-      name: g.name,
-      participantsCount: (g as unknown as { participants?: unknown[] }).participants?.length,
-      isAdmin: (g as unknown as { isAdmin?: boolean }).isAdmin,
-    }));
+    return groups.map(g => {
+      const groupChat = g as unknown as GroupChat;
+      return {
+        id: g.id._serialized,
+        name: g.name,
+        participantsCount: groupChat.participants?.length,
+        isAdmin: groupChat.participants?.some(
+          p => p.isAdmin && p.id._serialized === this.client?.info?.wid?._serialized,
+        ),
+      };
+    });
   }
 
   // ============= Phase 3: Extended Messaging =============
@@ -473,36 +485,23 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       if (!chat.isGroup) {
         return null;
       }
-      // whatsapp-web.js GroupChat type lacks full definitions
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const groupChat = chat as any;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-      const participants: GroupParticipant[] = (groupChat.participants || []).map((p: any) => ({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const groupChat = chat as unknown as GroupChat;
+      const participants: GroupParticipant[] = (groupChat.participants || []).map(p => ({
         id: String(p.id._serialized),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         number: String(p.id.user),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         name: p.name ? String(p.name) : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         isAdmin: Boolean(p.isAdmin),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         isSuperAdmin: Boolean(p.isSuperAdmin),
       }));
 
       return {
         id: chat.id._serialized,
         name: chat.name,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         description: groupChat.description ? String(groupChat.description) : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         owner: groupChat.owner?._serialized ? String(groupChat.owner._serialized) : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        createdAt: groupChat.creationAt as number | undefined,
+        createdAt: groupChat.createdAt,
         participants,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         isReadOnly: Boolean(groupChat.isReadOnly),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         isAnnounce: Boolean(groupChat.isAnnounce),
       };
     } catch (error) {
@@ -517,8 +516,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     const participantIds = participants.map(p => (p.includes('@') ? p : `${p}@c.us`));
     const result = await this.client!.createGroup(name, participantIds);
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const groupId = String((result as any).gid._serialized);
+    const groupId = String((result as unknown as GroupCreateResult).gid._serialized);
     return {
       id: groupId,
       name: name,
@@ -533,8 +531,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       throw new Error('Chat is not a group');
     }
     const participantIds = participants.map(p => (p.includes('@') ? p : `${p}@c.us`));
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).addParticipants(participantIds);
+    await (chat as unknown as GroupChat).addParticipants(participantIds);
   }
 
   async removeParticipants(groupId: string, participants: string[]): Promise<void> {
@@ -544,8 +541,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       throw new Error('Chat is not a group');
     }
     const participantIds = participants.map(p => (p.includes('@') ? p : `${p}@c.us`));
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).removeParticipants(participantIds);
+    await (chat as unknown as GroupChat).removeParticipants(participantIds);
   }
 
   async promoteParticipants(groupId: string, participants: string[]): Promise<void> {
@@ -555,8 +551,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       throw new Error('Chat is not a group');
     }
     const participantIds = participants.map(p => (p.includes('@') ? p : `${p}@c.us`));
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).promoteParticipants(participantIds);
+    await (chat as unknown as GroupChat).promoteParticipants(participantIds);
   }
 
   async demoteParticipants(groupId: string, participants: string[]): Promise<void> {
@@ -566,8 +561,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       throw new Error('Chat is not a group');
     }
     const participantIds = participants.map(p => (p.includes('@') ? p : `${p}@c.us`));
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).demoteParticipants(participantIds);
+    await (chat as unknown as GroupChat).demoteParticipants(participantIds);
   }
 
   async leaveGroup(groupId: string): Promise<void> {
@@ -576,8 +570,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!chat.isGroup) {
       throw new Error('Chat is not a group');
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).leave();
+    await (chat as unknown as GroupChat).leave();
   }
 
   async setGroupSubject(groupId: string, subject: string): Promise<void> {
@@ -586,8 +579,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!chat.isGroup) {
       throw new Error('Chat is not a group');
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).setSubject(subject);
+    await (chat as unknown as GroupChat).setSubject(subject);
   }
 
   async setGroupDescription(groupId: string, description: string): Promise<void> {
@@ -596,8 +588,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!chat.isGroup) {
       throw new Error('Chat is not a group');
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).setDescription(description);
+    await (chat as unknown as GroupChat).setDescription(description);
   }
 
   // Reactions (Phase 3)
@@ -609,8 +600,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!message) {
       throw new Error(`Message ${messageId} not found in chat ${chatId}`);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (message as any).react(emoji);
+    await (message as MessageWithReactions).react(emoji);
     this.logger.log(`Reacted to message ${messageId} with ${emoji || '(removed)'}`);
   }
 
@@ -622,22 +612,18 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!message) {
       throw new Error(`Message ${messageId} not found in chat ${chatId}`);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (!(message as any).hasReaction) {
+    const msgWithReactions = message as MessageWithReactions;
+    if (!msgWithReactions.hasReaction) {
       return [];
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const reactions = await (message as any).getReactions();
+    const reactions = await msgWithReactions.getReactions();
     if (!reactions) {
       return [];
     }
     // Map reactions to our interface format
     const result: MessageReaction[] = [];
 
-    for (const r of reactions as Array<{
-      id: string;
-      senders: Array<{ senderId: string; reaction: string; timestamp: number }>;
-    }>) {
+    for (const r of reactions) {
       result.push({
         emoji: String(r.id),
         senders: (r.senders || []).map(s => ({
@@ -653,13 +639,12 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
   // Labels (Phase 3) - WhatsApp Business only
   async getLabels(): Promise<Label[]> {
     this.ensureReady();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const labels = await (this.client as any).getLabels();
+    const labels = await (this.client as unknown as BusinessClient).getLabels();
     if (!labels) {
       return [];
     }
 
-    return (labels as Array<{ id: string; name: string; hexColor: string }>).map(label => ({
+    return labels.map(label => ({
       id: String(label.id),
       name: String(label.name),
       hexColor: String(label.hexColor),
@@ -668,17 +653,13 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
 
   async getLabelById(labelId: string): Promise<Label | null> {
     this.ensureReady();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const label = await (this.client as any).getLabelById(labelId);
+    const label = await (this.client as unknown as BusinessClient).getLabelById(labelId);
     if (!label) {
       return null;
     }
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       id: String(label.id),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       name: String(label.name),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       hexColor: String(label.hexColor),
     };
   }
@@ -686,13 +667,12 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
   async getChatLabels(chatId: string): Promise<Label[]> {
     this.ensureReady();
     const chat = await this.client!.getChatById(chatId);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const labels = await (chat as any).getLabels();
+    const labels = await (chat as unknown as GroupChat).getLabels();
     if (!labels) {
       return [];
     }
 
-    return (labels as Array<{ id: string; name: string; hexColor: string }>).map(label => ({
+    return labels.map(label => ({
       id: String(label.id),
       name: String(label.name),
       hexColor: String(label.hexColor),
@@ -702,39 +682,30 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
   async addLabelToChat(chatId: string, labelId: string): Promise<void> {
     this.ensureReady();
     const chat = await this.client!.getChatById(chatId);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).addLabel(labelId);
+    await (chat as unknown as GroupChat).addLabel(labelId);
     this.logger.log(`Added label ${labelId} to chat ${chatId}`);
   }
 
   async removeLabelFromChat(chatId: string, labelId: string): Promise<void> {
     this.ensureReady();
     const chat = await this.client!.getChatById(chatId);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (chat as any).removeLabel(labelId);
+    await (chat as unknown as GroupChat).removeLabel(labelId);
     this.logger.log(`Removed label ${labelId} from chat ${chatId}`);
   }
 
   // Channels/Newsletter (Phase 3)
   async getSubscribedChannels(): Promise<Channel[]> {
     this.ensureReady();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const channels = await (this.client as any).getChannels();
+    const channels = await (this.client as unknown as BusinessClient).getChannels();
     if (!channels) {
       return [];
     }
-    return (channels as Array<any>).map(ch => ({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      id: String(ch.id?._serialized || ch.id),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    return channels.map((ch: WwjsChannelData) => ({
+      id: String(typeof ch.id === 'object' ? ch.id._serialized : ch.id),
       name: String(ch.name || ''),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       description: ch.description ? String(ch.description) : undefined,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       inviteCode: ch.inviteCode ? String(ch.inviteCode) : undefined,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       subscriberCount: ch.subscriberCount ? Number(ch.subscriberCount) : undefined,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       verified: ch.verified ? Boolean(ch.verified) : undefined,
     }));
   }
@@ -742,23 +713,16 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
   async getChannelById(channelId: string): Promise<Channel | null> {
     this.ensureReady();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-      const ch = await (this.client as any).getChannelById(channelId);
+      const ch = await (this.client as unknown as BusinessClient).getChannelById(channelId);
       if (!ch) {
         return null;
       }
       return {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        id: String(ch.id?._serialized || ch.id),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        id: String(typeof ch.id === 'object' ? ch.id._serialized : ch.id),
         name: String(ch.name || ''),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         description: ch.description ? String(ch.description) : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         inviteCode: ch.inviteCode ? String(ch.inviteCode) : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         subscriberCount: ch.subscriberCount ? Number(ch.subscriberCount) : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         verified: ch.verified ? Boolean(ch.verified) : undefined,
       };
     } catch (error) {
@@ -769,49 +733,37 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
 
   async subscribeToChannel(inviteCode: string): Promise<Channel> {
     this.ensureReady();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const ch = await (this.client as any).subscribeToChannel(inviteCode);
+    const ch = await (this.client as unknown as BusinessClient).subscribeToChannel(inviteCode);
     this.logger.log(`Subscribed to channel with invite code: ${inviteCode}`);
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      id: String(ch.id?._serialized || ch.id),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      id: String(typeof ch.id === 'object' ? ch.id._serialized : ch.id),
       name: String(ch.name || ''),
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       description: ch.description ? String(ch.description) : undefined,
     };
   }
 
   async unsubscribeFromChannel(channelId: string): Promise<void> {
     this.ensureReady();
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-    await (this.client as any).unsubscribeFromChannel(channelId);
+    await (this.client as unknown as BusinessClient).unsubscribeFromChannel(channelId);
     this.logger.log(`Unsubscribed from channel: ${channelId}`);
   }
 
   async getChannelMessages(channelId: string, limit: number = 50): Promise<ChannelMessage[]> {
     this.ensureReady();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-      const ch = await (this.client as any).getChannelById(channelId);
+      const ch = await (this.client as unknown as BusinessClient).getChannelById(channelId);
       if (!ch) {
         throw new Error(`Channel ${channelId} not found`);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
       const messages = await ch.fetchMessages({ limit });
       if (!messages) {
         return [];
       }
-      return (messages as Array<any>).map(msg => ({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        id: String(msg.id?._serialized || msg.id),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      return messages.map(msg => ({
+        id: String(typeof msg.id === 'object' ? msg.id._serialized : msg.id),
         body: String(msg.body || ''),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         timestamp: Number(msg.timestamp),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         hasMedia: Boolean(msg.hasMedia),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         mediaUrl: msg.mediaUrl ? String(msg.mediaUrl) : undefined,
       }));
     } catch (error) {
@@ -870,8 +822,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!chat.isGroup) {
       throw new Error(`${groupId} is not a group`);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const inviteCode = await (chat as any).getInviteCode();
+    const inviteCode = await (chat as unknown as GroupChat).getInviteCode();
     this.logger.log(`Got invite code for group ${groupId}`);
     return String(inviteCode);
   }
@@ -883,8 +834,7 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (!chat.isGroup) {
       throw new Error(`${groupId} is not a group`);
     }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
-    const newCode = await (chat as any).revokeInvite();
+    const newCode = await (chat as unknown as GroupChat).revokeInvite();
     this.logger.log(`Revoked invite code for group ${groupId}, new code generated`);
     return String(newCode);
   }

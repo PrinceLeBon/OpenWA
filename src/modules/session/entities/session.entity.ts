@@ -34,7 +34,7 @@ export class Session {
   pushName: string | null;
 
   @Column({ type: jsonColumnType(), default: '{}' })
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 
   // Phase 3: Proxy per session
   @Column({ type: 'varchar', length: 255, nullable: true })
