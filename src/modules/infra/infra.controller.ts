@@ -8,6 +8,8 @@ import { EngineFactory } from '../../engine/engine.factory';
 import { DockerService } from '../docker';
 import { CacheService } from '../../common/cache/cache.service';
 import { StorageService } from '../../common/storage/storage.service';
+import { ShutdownService } from '../../common/services/shutdown.service';
+import { createLogger } from '../../common/services/logger.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -132,6 +134,8 @@ interface MigrationTables {
 @ApiTags('infrastructure')
 @Controller('infra')
 export class InfraController {
+  private readonly logger = createLogger('InfraController');
+
   constructor(
     private readonly configService: ConfigService,
     @InjectDataSource('main')
@@ -142,6 +146,7 @@ export class InfraController {
     private readonly dockerService: DockerService,
     private readonly cacheService: CacheService,
     private readonly storageService: StorageService,
+    private readonly shutdownService: ShutdownService,
   ) {}
 
   @Get('status')
@@ -310,7 +315,7 @@ export class InfraController {
       // Write to .env file in data/ directory so it persists across container restarts
       const envPath = path.resolve(process.cwd(), 'data', '.env.generated');
       fs.writeFileSync(envPath, envLines.join('\n'), 'utf8');
-      console.log('[InfraController] Configuration saved to:', envPath);
+      this.logger.log('Configuration saved', { envPath });
 
       const profileMsg = profiles.length > 0 ? ` Docker profiles required: ${profiles.join(', ')}.` : '';
 
@@ -346,14 +351,14 @@ export class InfraController {
     let orchestrationResult: object | undefined;
     let removalResult: { removed: string[]; errors: string[] } | undefined;
 
-    console.log('[InfraController] Restart requested with profiles:', profiles);
-    console.log('[InfraController] Profiles to remove:', profilesToRemove);
+    this.logger.log('Restart requested', { profiles });
+    this.logger.log('Profiles to remove', { profilesToRemove });
 
     // If profiles are specified, orchestrate Docker containers
     if (this.dockerService.isDockerAvailable()) {
       // First, remove containers for disabled services
       if (profilesToRemove.length > 0) {
-        console.log('[InfraController] Removing disabled profiles...');
+        this.logger.log('Removing disabled profiles...');
         removalResult = { removed: [], errors: [] };
 
         for (const profile of profilesToRemove) {
@@ -368,17 +373,17 @@ export class InfraController {
             removalResult.errors.push(`Error removing ${profile}: ${err}`);
           }
         }
-        console.log('[InfraController] Removal result:', removalResult);
+        this.logger.log('Removal result', { removalResult });
       }
 
       // Then, start containers for enabled services
       if (profiles.length > 0) {
-        console.log('[InfraController] Orchestrating enabled profiles...');
+        this.logger.log('Orchestrating enabled profiles...');
         orchestrationResult = await this.dockerService.orchestrateProfiles(profiles);
-        console.log('[InfraController] Orchestration result:', orchestrationResult);
+        this.logger.log('Orchestration result', { orchestrationResult });
       }
     } else {
-      console.log('[InfraController] Docker not available, writing signal file instead');
+      this.logger.warn('Docker not available, writing signal file instead');
       // Fallback: write signal file for host script
       try {
         const signalFile = path.resolve(process.cwd(), 'data', '.orchestration-request.json');
@@ -389,17 +394,14 @@ export class InfraController {
           action: 'restart-with-profiles',
         };
         fs.writeFileSync(signalFile, JSON.stringify(orchestrationRequest, null, 2), 'utf8');
-        console.log('[InfraController] Orchestration request written to:', signalFile);
+        this.logger.log('Orchestration request written', { signalFile });
       } catch (err) {
-        console.error('[InfraController] Failed to write orchestration request:', err);
+        this.logger.error('Failed to write orchestration request', err instanceof Error ? err.message : String(err));
       }
     }
 
-    // Schedule process exit after delay to allow response and container orchestration
-    setTimeout(() => {
-      console.log('[InfraController] Server restart requested. Exiting process...');
-      process.exit(0); // Docker restart policy will restart the container
-    }, 3000); // Increased to 3s to allow more time for container operations
+    // Schedule graceful shutdown after delay to allow response and container orchestration
+    void this.shutdownService.shutdown(3000);
 
     // Calculate estimated time - base 15s + additional for each service (increased for reliability)
     let estimatedTime = 15;

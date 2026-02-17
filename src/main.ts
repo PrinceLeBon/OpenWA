@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { ShutdownService } from './common/services/shutdown.service';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -55,6 +56,12 @@ async function bootstrap() {
 
   // Enable shutdown hooks for graceful shutdown
   app.enableShutdownHooks();
+
+  // Wire up graceful shutdown service
+  const shutdownService = app.get(ShutdownService);
+  shutdownService.setShutdownCallback(async () => {
+    await app.close();
+  });
 
   // Enhanced Security Headers (Phase 3 Security Audit)
   app.use(
