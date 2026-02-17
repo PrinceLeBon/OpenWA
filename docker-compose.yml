@@ -41,7 +41,7 @@ services:
       - DATABASE_PORT=${DATABASE_PORT:-5432}
       - DATABASE_USERNAME=${DATABASE_USERNAME:-openwa}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:-openwa}
-      - DATABASE_SYNCHRONIZE=${DATABASE_SYNCHRONIZE:-true}
+      - DATABASE_SYNCHRONIZE=${DATABASE_SYNCHRONIZE:-false}
       # Engine
       - ENGINE_TYPE=${ENGINE_TYPE:-whatsapp-web.js}
       - SESSION_DATA_PATH=/app/data/sessions

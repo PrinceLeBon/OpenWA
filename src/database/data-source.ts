@@ -4,7 +4,6 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
-const isProduction = process.env.NODE_ENV === 'production';
 const dbType = process.env.DATABASE_TYPE || 'sqlite';
 
 // SQLite configuration
@@ -13,7 +12,7 @@ const sqliteDataSource = new DataSource({
   database: process.env.DATABASE_NAME || './data/openwa.sqlite',
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
-  synchronize: !isProduction,
+  synchronize: false,
   logging: process.env.DATABASE_LOGGING === 'true',
 });
 

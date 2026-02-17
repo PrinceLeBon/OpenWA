@@ -5,7 +5,6 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MessageProcessor } from './processors/message.processor';
 import { WebhookProcessor } from './processors/webhook.processor';
 import { QUEUE_NAMES } from './queue-names';
 import { Webhook } from '../webhook/entities/webhook.entity';
@@ -31,21 +30,17 @@ export { QUEUE_NAMES } from './queue-names';
         },
       }),
     }),
-    BullModule.registerQueue({ name: QUEUE_NAMES.MESSAGE }, { name: QUEUE_NAMES.WEBHOOK }),
+    BullModule.registerQueue({ name: QUEUE_NAMES.WEBHOOK }),
     BullBoardModule.forRoot({
       route: '/admin/queues',
       adapter: ExpressAdapter,
-    }),
-    BullBoardModule.forFeature({
-      name: QUEUE_NAMES.MESSAGE,
-      adapter: BullMQAdapter,
     }),
     BullBoardModule.forFeature({
       name: QUEUE_NAMES.WEBHOOK,
       adapter: BullMQAdapter,
     }),
   ],
-  providers: [MessageProcessor, WebhookProcessor],
+  providers: [WebhookProcessor],
   exports: [BullModule],
 })
 export class QueueModule {}

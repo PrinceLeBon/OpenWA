@@ -72,7 +72,7 @@ if (process.env.QUEUE_ENABLED === 'true') {
             __dirname + '/modules/webhook/**/*.entity{.ts,.js}',
             __dirname + '/modules/message/**/*.entity{.ts,.js}',
           ],
-          synchronize: configService.get<boolean>('dataDatabase.synchronize', true),
+          synchronize: configService.get<boolean>('dataDatabase.synchronize', false),
           logging: configService.get<boolean>('dataDatabase.logging', false),
         };
 
@@ -85,6 +85,8 @@ if (process.env.QUEUE_ENABLED === 'true') {
             username: configService.get<string>('dataDatabase.username'),
             password: configService.get<string>('dataDatabase.password'),
             database: 'openwa',
+            retryAttempts: 10,
+            retryDelay: 3000,
             extra: {
               max: configService.get<number>('dataDatabase.poolSize', 10),
             },

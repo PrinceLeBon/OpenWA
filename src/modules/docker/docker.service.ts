@@ -270,7 +270,7 @@ export class DockerService implements OnModuleInit {
       // Pull image first
       this.logger.log(`Pulling image: ${spec.image}`);
       await new Promise<void>((resolve, reject) => {
-        this.docker!.pull(spec.image, (err: Error | null, stream: NodeJS.ReadableStream) => {
+        void this.docker!.pull(spec.image, (err: Error | null, stream: NodeJS.ReadableStream) => {
           if (err) return reject(err);
           this.docker!.modem.followProgress(stream, (err2: Error | null) => {
             if (err2) return reject(err2);
