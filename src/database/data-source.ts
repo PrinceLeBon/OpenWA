@@ -4,7 +4,6 @@ import { config } from 'dotenv';
 // Load environment variables
 config();
 
-const isProduction = process.env.NODE_ENV === 'production';
 const dbType = process.env.DATABASE_TYPE || 'sqlite';
 
 // SQLite configuration

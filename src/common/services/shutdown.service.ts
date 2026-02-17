@@ -16,20 +16,23 @@ export class ShutdownService {
   /**
    * Trigger graceful shutdown with optional delay
    */
-  async shutdown(delayMs = 3000): Promise<void> {
+  shutdown(delayMs = 3000): void {
     this.logger.log('Graceful shutdown requested', { delayMs });
 
-    setTimeout(async () => {
+    setTimeout(() => {
       this.logger.log('Initiating shutdown...');
-      try {
-        if (this.destroyCallback) {
-          await this.destroyCallback();
+      const doShutdown = async () => {
+        try {
+          if (this.destroyCallback) {
+            await this.destroyCallback();
+          }
+        } catch (error) {
+          this.logger.error('Error during shutdown', error instanceof Error ? error.message : String(error));
+        } finally {
+          process.exit(0);
         }
-      } catch (error) {
-        this.logger.error('Error during shutdown', error instanceof Error ? error.message : String(error));
-      } finally {
-        process.exit(0);
-      }
+      };
+      void doShutdown();
     }, delayMs);
   }
 }
