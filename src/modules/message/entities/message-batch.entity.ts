@@ -54,7 +54,7 @@ export class MessageBatch {
   messages: Array<{
     chatId: string;
     type: string;
-    content: any;
+    content: Record<string, unknown>;
     variables?: Record<string, string>;
   }>;
 

@@ -44,7 +44,8 @@ export class AuthService implements OnModuleInit {
       if (existsSync(API_KEY_FILE)) {
         try {
           displayKey = readFileSync(API_KEY_FILE, 'utf-8').trim();
-        } catch {
+        } catch (error) {
+          this.logger.warn(`Failed to read API key file: ${API_KEY_FILE}`, { error: String(error) });
           displayKey = '(check dashboard for keys)';
         }
       } else {
@@ -239,8 +240,8 @@ export class AuthService implements OnModuleInit {
       const rangeNum = this.ipToNumber(range);
 
       return (ipNum & mask) === (rangeNum & mask);
-    } catch {
-      // If parsing fails, don't allow
+    } catch (error) {
+      this.logger.warn(`Invalid CIDR format: ${cidr}`, { error: String(error) });
       return false;
     }
   }

@@ -136,8 +136,8 @@ export class StorageService {
           const fullPath = path.join(this.localPath, file);
           const stats = fs.statSync(fullPath);
           sizeBytes += stats.size;
-        } catch {
-          // File might not exist
+        } catch (error) {
+          this.logger.debug(`Failed to stat file: ${file}`, { error: String(error) });
         }
       }
     }

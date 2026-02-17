@@ -1,10 +1,13 @@
 import { Controller, Post, Headers, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiHeader } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { createLogger } from '../../common/services/logger.service';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthValidateController {
+  private readonly logger = createLogger('AuthValidateController');
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('validate')
@@ -24,7 +27,8 @@ export class AuthValidateController {
         return { valid: true, role: keyEntity.role };
       }
       return { valid: false };
-    } catch {
+    } catch (error) {
+      this.logger.warn('API key validation error', { error: error instanceof Error ? error.message : String(error) });
       return { valid: false };
     }
   }

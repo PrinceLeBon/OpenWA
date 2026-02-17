@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { MessageService } from './message.service';
-import { Message, MessageDirection } from './entities/message.entity';
+import { Message, MessageDirection, MessageStatus } from './entities/message.entity';
 import { SessionService } from '../session/session.service';
 import { HookManager } from '../../core/hooks';
 
@@ -81,21 +81,24 @@ describe('MessageService', () => {
       expect(mockEngine.sendTextMessage).toHaveBeenCalledWith('628123456789@c.us', 'Hello');
     });
 
-    it('should save outgoing message to DB', async () => {
+    it('should save outgoing message as pending before sending, then update to sent', async () => {
       await service.sendText('sess-1', {
         chatId: '628123456789@c.us',
         text: 'Hello',
       });
 
+      // First save: pending message before engine send
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionId: 'sess-1',
           direction: MessageDirection.OUTGOING,
           type: 'text',
           body: 'Hello',
+          status: MessageStatus.PENDING,
         }),
       );
-      expect(repository.save).toHaveBeenCalled();
+      // save called twice: once for initial pending, once for status update to sent
+      expect(repository.save).toHaveBeenCalledTimes(2);
     });
 
     it('should execute message:sending and message:sent hooks', async () => {

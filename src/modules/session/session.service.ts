@@ -6,8 +6,8 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import { Session, SessionStatus } from './entities/session.entity';
 import { CreateSessionDto } from './dto';
 import { EngineFactory } from '../../engine/engine.factory';
@@ -37,6 +37,8 @@ export class SessionService implements OnModuleDestroy, OnModuleInit {
   constructor(
     @InjectRepository(Session, 'data')
     private readonly sessionRepository: Repository<Session>,
+    @InjectDataSource('data')
+    private readonly dataSource: DataSource,
     private readonly engineFactory: EngineFactory,
     private readonly eventsGateway: EventsGateway,
     private readonly webhookService: WebhookService,
@@ -106,13 +108,15 @@ export class SessionService implements OnModuleDestroy, OnModuleInit {
       status: SessionStatus.CREATED,
     });
 
-    const saved = await this.sessionRepository.save(session);
+    const saved = await this.dataSource.transaction(async manager => {
+      return await manager.save(session);
+    });
     this.logger.log(`Session created: ${saved.name}`, {
       sessionId: saved.id,
       action: 'create',
     });
 
-    // Execute hook after session created
+    // Execute hook after session created (outside transaction since hooks do external I/O)
     await this.hookManager.execute('session:created', saved, {
       sessionId: saved.id,
       source: 'SessionService',
@@ -156,21 +160,28 @@ export class SessionService implements OnModuleDestroy, OnModuleInit {
       this.engines.delete(id);
     }
 
-    await this.sessionRepository.remove(session);
-    this.logger.log(`Session deleted: ${session.name}`, {
-      sessionId: id,
-      action: 'delete',
-    });
-
-    // Execute hook after session deleted
+    // Execute hook BEFORE delete so plugins can access session data
     await this.hookManager.execute(
       'session:deleted',
-      { sessionId: id },
+      {
+        id: session.id,
+        name: session.name,
+        phone: session.phone,
+        pushName: session.pushName,
+      },
       {
         sessionId: id,
         source: 'SessionService',
       },
     );
+
+    await this.dataSource.transaction(async manager => {
+      await manager.remove(session);
+    });
+    this.logger.log(`Session deleted: ${session.name}`, {
+      sessionId: id,
+      action: 'delete',
+    });
   }
 
   async start(id: string): Promise<Session> {

@@ -104,7 +104,8 @@ export class CacheService implements OnModuleDestroy {
     try {
       await this.redis.ping();
       return true;
-    } catch {
+    } catch (error) {
+      this.logger.debug(`Redis ping failed: ${String(error)}`);
       return false;
     }
   }
