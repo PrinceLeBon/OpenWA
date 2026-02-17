@@ -134,7 +134,7 @@ export class OpenWA extends EventEmitter {
   }
 
   private setupWebSocket(): void {
-    this.ws.on('message', (event) => {
+    this.ws.on('message', event => {
       this.emit(event.type, event.data);
     });
   }
@@ -166,13 +166,7 @@ export interface Session {
   lastSeen?: string;
 }
 
-export type SessionStatus =
-  | 'INITIALIZING'
-  | 'SCAN_QR'
-  | 'CONNECTING'
-  | 'CONNECTED'
-  | 'DISCONNECTED'
-  | 'FAILED';
+export type SessionStatus = 'INITIALIZING' | 'SCAN_QR' | 'CONNECTING' | 'CONNECTED' | 'DISCONNECTED' | 'FAILED';
 
 export interface CreateSessionInput {
   id?: string;
@@ -281,7 +275,7 @@ export class MessagesResource {
     sessionId: string,
     phone: string,
     file: File | Buffer | ReadStream,
-    options?: SendFileOptions
+    options?: SendFileOptions,
   ): Promise<Message> {
     const formData = new FormData();
     formData.append('phone', phone);
@@ -297,11 +291,7 @@ export class MessagesResource {
     });
   }
 
-  async list(
-    sessionId: string,
-    phone: string,
-    params?: MessageListParams
-  ): Promise<PaginatedResponse<Message>> {
+  async list(sessionId: string, phone: string, params?: MessageListParams): Promise<PaginatedResponse<Message>> {
     return this.http.get(`/api/sessions/${sessionId}/messages`, {
       params: { phone, ...params },
     });
@@ -311,25 +301,14 @@ export class MessagesResource {
     return this.http.get(`/api/sessions/${sessionId}/messages/${messageId}`);
   }
 
-  async delete(
-    sessionId: string,
-    messageId: string,
-    forEveryone = true
-  ): Promise<void> {
+  async delete(sessionId: string, messageId: string, forEveryone = true): Promise<void> {
     return this.http.delete(`/api/sessions/${sessionId}/messages/${messageId}`, {
       params: { forEveryone },
     });
   }
 
-  async react(
-    sessionId: string,
-    messageId: string,
-    emoji: string
-  ): Promise<void> {
-    return this.http.post(
-      `/api/sessions/${sessionId}/messages/${messageId}/react`,
-      { emoji }
-    );
+  async react(sessionId: string, messageId: string, emoji: string): Promise<void> {
+    return this.http.post(`/api/sessions/${sessionId}/messages/${messageId}/react`, { emoji });
   }
 }
 ```
@@ -496,7 +475,7 @@ export class OpenWAError extends Error {
     message: string,
     public code: string,
     public status: number,
-    public details?: unknown
+    public details?: unknown,
   ) {
     super(message);
     this.name = 'OpenWAError';
@@ -525,14 +504,8 @@ export class SessionNotFoundError extends OpenWAError {
 }
 
 export class RateLimitError extends OpenWAError {
-  constructor(
-    public retryAfter: number
-  ) {
-    super(
-      `Rate limited. Retry after ${retryAfter}ms`,
-      'RATE_LIMIT_EXCEEDED',
-      429
-    );
+  constructor(public retryAfter: number) {
+    super(`Rate limited. Retry after ${retryAfter}ms`, 'RATE_LIMIT_EXCEEDED', 429);
     this.name = 'RateLimitError';
   }
 }
@@ -1150,7 +1123,7 @@ class Messages
 ### Installation
 
 ```bash
-npm install n8n-nodes-openwa
+npm install @rmyndharis/n8n-nodes-openwa
 ```
 
 ### Node Configuration
@@ -1158,12 +1131,7 @@ npm install n8n-nodes-openwa
 ```typescript
 // nodes/OpenWA/OpenWA.node.ts
 
-import {
-  IExecuteFunctions,
-  INodeExecutionData,
-  INodeType,
-  INodeTypeDescription,
-} from 'n8n-workflow';
+import { IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class OpenWA implements INodeType {
   description: INodeTypeDescription = {
@@ -1367,13 +1335,7 @@ export class OpenWA implements INodeType {
 ```typescript
 // nodes/OpenWA/OpenWATrigger.node.ts
 
-import {
-  IHookFunctions,
-  IWebhookFunctions,
-  INodeType,
-  INodeTypeDescription,
-  IWebhookResponseData,
-} from 'n8n-workflow';
+import { IHookFunctions, IWebhookFunctions, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 export class OpenWATrigger implements INodeType {
   description: INodeTypeDescription = {
@@ -1496,9 +1458,7 @@ export class OpenWATrigger implements INodeType {
     const body = this.getBodyData() as any;
 
     return {
-      workflowData: [
-        this.helpers.returnJsonArray(body),
-      ],
+      workflowData: [this.helpers.returnJsonArray(body)],
     };
   }
 }
@@ -1532,6 +1492,7 @@ API v2.0.0 → SDK v2.0.x (breaking changes)
 - [ ] Tag release in Git
 - [ ] Update examples repository
 ```
+
 ---
 
 <div align="center">

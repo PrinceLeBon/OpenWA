@@ -5,7 +5,7 @@
 OpenWA provides official n8n community nodes for integrating WhatsApp automation into n8n workflows. This enables users to build powerful automations combining WhatsApp messaging with hundreds of other services available in n8n.
 
 **Repository:** https://github.com/rmyndharis/OpenWA-n8n
-**npm Package:** `n8n-nodes-openwa`
+**npm Package:** `@rmyndharis/n8n-nodes-openwa`
 
 ## Architecture
 
@@ -28,7 +28,7 @@ OpenWA provides official n8n community nodes for integrating WhatsApp automation
 
 1. Go to **Settings > Community Nodes**
 2. Select **Install**
-3. Enter `n8n-nodes-openwa`
+3. Enter `@rmyndharis/n8n-nodes-openwa`
 4. Agree to the risks and install
 5. Restart n8n
 
@@ -36,7 +36,7 @@ OpenWA provides official n8n community nodes for integrating WhatsApp automation
 
 ```bash
 cd ~/.n8n/nodes
-npm install n8n-nodes-openwa
+npm install @rmyndharis/n8n-nodes-openwa
 ```
 
 ## Nodes
@@ -47,25 +47,25 @@ Execute operations on your OpenWA server.
 
 #### Credentials Setup
 
-| Field | Description | Example |
-|-------|-------------|---------|
+| Field      | Description                      | Example                  |
+| ---------- | -------------------------------- | ------------------------ |
 | Server URL | OpenWA server URL (without /api) | `https://wa.example.com` |
-| API Key | API key from OpenWA dashboard | `owa_xxxxxxxx...` |
+| API Key    | API key from OpenWA dashboard    | `owa_xxxxxxxx...`        |
 
 #### Resources & Operations
 
-| Resource | Operation | Description | Endpoint |
-|----------|-----------|-------------|----------|
-| Session | Get Status | Get session status | `GET /api/sessions/:id` |
-| Session | List All | List all sessions | `GET /api/sessions` |
-| Message | Send Text | Send text message | `POST /api/sessions/:id/messages/send-text` |
-| Message | Send Image | Send image (URL/Base64) | `POST /api/sessions/:id/messages/send-image` |
-| Message | Send Document | Send file/document | `POST /api/sessions/:id/messages/send-document` |
-| Message | Send Location | Send location pin | `POST /api/sessions/:id/messages/send-location` |
-| Contact | Check Exists | Check if number on WhatsApp | `GET /api/sessions/:id/contacts/check/:number` |
-| Contact | Get Info | Get contact information | `GET /api/sessions/:id/contacts/:contactId` |
-| Webhook | Create | Create a webhook | `POST /api/sessions/:id/webhooks` |
-| Webhook | Delete | Delete a webhook | `DELETE /api/sessions/:id/webhooks/:webhookId` |
+| Resource | Operation     | Description                 | Endpoint                                        |
+| -------- | ------------- | --------------------------- | ----------------------------------------------- |
+| Session  | Get Status    | Get session status          | `GET /api/sessions/:id`                         |
+| Session  | List All      | List all sessions           | `GET /api/sessions`                             |
+| Message  | Send Text     | Send text message           | `POST /api/sessions/:id/messages/send-text`     |
+| Message  | Send Image    | Send image (URL/Base64)     | `POST /api/sessions/:id/messages/send-image`    |
+| Message  | Send Document | Send file/document          | `POST /api/sessions/:id/messages/send-document` |
+| Message  | Send Location | Send location pin           | `POST /api/sessions/:id/messages/send-location` |
+| Contact  | Check Exists  | Check if number on WhatsApp | `GET /api/sessions/:id/contacts/check/:number`  |
+| Contact  | Get Info      | Get contact information     | `GET /api/sessions/:id/contacts/:contactId`     |
+| Webhook  | Create        | Create a webhook            | `POST /api/sessions/:id/webhooks`               |
+| Webhook  | Delete        | Delete a webhook            | `DELETE /api/sessions/:id/webhooks/:webhookId`  |
 
 ### OpenWA Trigger Node
 
@@ -73,13 +73,13 @@ Start workflows when WhatsApp events occur.
 
 #### Supported Events
 
-| Event | Description | Use Case |
-|-------|-------------|----------|
-| `message.received` | New incoming message | Auto-reply, lead capture |
-| `message.sent` | Message sent successfully | Delivery confirmation |
-| `session.connected` | Session authenticated | Startup notifications |
-| `session.disconnected` | Session lost connection | Alert monitoring |
-| `session.qr_ready` | QR code generated | Reconnection alerts |
+| Event                  | Description               | Use Case                 |
+| ---------------------- | ------------------------- | ------------------------ |
+| `message.received`     | New incoming message      | Auto-reply, lead capture |
+| `message.sent`         | Message sent successfully | Delivery confirmation    |
+| `session.connected`    | Session authenticated     | Startup notifications    |
+| `session.disconnected` | Session lost connection   | Alert monitoring         |
+| `session.qr_ready`     | QR code generated         | Reconnection alerts      |
 
 #### How It Works
 
@@ -118,6 +118,7 @@ Automatically reply to incoming messages with a welcome message.
 ```
 
 **Configuration:**
+
 - Trigger: `message.received`
 - IF Node: Check if `{{$json.data.body}}` contains "hello"
 - OpenWA: Send Text with welcome message
@@ -144,6 +145,7 @@ Get notified on Slack when WhatsApp session disconnects.
 ```
 
 **Slack Message:**
+
 ```
 ⚠️ WhatsApp session "{{$json.sessionId}}" disconnected!
 Time: {{$json.timestamp}}
@@ -193,14 +195,16 @@ WhatsApp has rate limits. Add delays between messages:
 ### 3. Message Formatting
 
 Use WhatsApp formatting in your messages:
+
 - Bold: `*text*`
 - Italic: `_text_`
 - Strikethrough: `~text~`
-- Monospace: ``` `text` ```
+- Monospace: `` `text` ``
 
 ### 4. Phone Number Format
 
 Always use the correct format for chat IDs:
+
 - Personal: `628123456789@c.us`
 - Group: `123456789-123456789@g.us`
 
