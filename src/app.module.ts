@@ -72,7 +72,7 @@ if (process.env.QUEUE_ENABLED === 'true') {
             __dirname + '/modules/webhook/**/*.entity{.ts,.js}',
             __dirname + '/modules/message/**/*.entity{.ts,.js}',
           ],
-          synchronize: configService.get<boolean>('dataDatabase.synchronize', true),
+          synchronize: configService.get<boolean>('dataDatabase.synchronize', false),
           logging: configService.get<boolean>('dataDatabase.logging', false),
         };
 
