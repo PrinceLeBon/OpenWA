@@ -85,6 +85,8 @@ if (process.env.QUEUE_ENABLED === 'true') {
             username: configService.get<string>('dataDatabase.username'),
             password: configService.get<string>('dataDatabase.password'),
             database: 'openwa',
+            retryAttempts: 10,
+            retryDelay: 3000,
             extra: {
               max: configService.get<number>('dataDatabase.poolSize', 10),
             },
