@@ -285,8 +285,8 @@ export class DockerService implements OnModuleInit {
           try {
             await this.docker.createVolume({ Name: vol.name });
             this.logger.log(`Created volume: ${vol.name}`);
-          } catch {
-            // Volume might already exist, that's fine
+          } catch (error) {
+            this.logger.debug(`Volume ${vol.name} creation skipped (may already exist)`, { error: String(error) });
           }
         }
       }

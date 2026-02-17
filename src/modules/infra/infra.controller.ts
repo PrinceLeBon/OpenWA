@@ -454,14 +454,14 @@ export class InfraController {
 
     try {
       messages = await this.dataDataSource.query<MessageRow[]>('SELECT * FROM messages');
-    } catch {
-      // Table may not exist yet
+    } catch (error) {
+      this.logger.debug('Messages table not available for export', { error: String(error) });
     }
 
     try {
       messageBatches = await this.dataDataSource.query<MessageBatchRow[]>('SELECT * FROM message_batches');
-    } catch {
-      // Table may not exist yet
+    } catch (error) {
+      this.logger.debug('Message batches table not available for export', { error: String(error) });
     }
 
     return {

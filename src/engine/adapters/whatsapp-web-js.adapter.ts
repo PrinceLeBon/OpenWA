@@ -229,8 +229,8 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         // Fall back to destroy if logout fails
         try {
           await this.client.destroy();
-        } catch {
-          // Ignore
+        } catch (destroyError) {
+          this.logger.warn('Client destroy also failed during logout fallback', String(destroyError));
         }
       }
       this.client = null;
@@ -341,7 +341,8 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         isMyContact: contact.isMyContact,
         isBlocked: contact.isBlocked,
       };
-    } catch {
+    } catch (error) {
+      this.logger.warn(`Failed to get contact: ${contactId}`, String(error));
       return null;
     }
   }
@@ -504,7 +505,8 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         isAnnounce: Boolean(groupChat.isAnnounce),
       };
-    } catch {
+    } catch (error) {
+      this.logger.warn(`Failed to get group: ${groupId}`, String(error));
       return null;
     }
   }
@@ -759,7 +761,8 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         verified: ch.verified ? Boolean(ch.verified) : undefined,
       };
-    } catch {
+    } catch (error) {
+      this.logger.warn(`Failed to get channel: ${channelId}`, String(error));
       return null;
     }
   }

@@ -64,8 +64,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       // Store API key info on socket for later use
       (client.data as { apiKey: unknown }).apiKey = validKey;
       this.logger.log(`Client connected: ${client.id} (key: ${validKey.name})`);
-    } catch {
-      this.logger.warn(`Client ${client.id} rejected: Auth error`);
+    } catch (error) {
+      this.logger.warn(`Client ${client.id} rejected: Auth error`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       client.emit('message', this.createError('UNAUTHORIZED', 'Authentication failed'));
       client.disconnect();
     }
