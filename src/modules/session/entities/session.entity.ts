@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { DateTransformer } from '../../../common/transformers/date.transformer';
+import { jsonColumnType, dateColumnType } from '../../../common/utils/column-types';
 
 export enum SessionStatus {
   CREATED = 'created',
@@ -32,7 +33,7 @@ export class Session {
   @Column({ type: 'varchar', length: 100, nullable: true })
   pushName: string | null;
 
-  @Column({ type: 'simple-json', default: '{}' })
+  @Column({ type: jsonColumnType(), default: '{}' })
   config: Record<string, any>;
 
   // Phase 3: Proxy per session
@@ -42,10 +43,10 @@ export class Session {
   @Column({ type: 'varchar', length: 10, nullable: true })
   proxyType: 'http' | 'https' | 'socks4' | 'socks5' | null;
 
-  @Column({ type: 'text', nullable: true, transformer: DateTransformer })
+  @Column({ type: dateColumnType(), nullable: true, transformer: DateTransformer })
   connectedAt: Date | null;
 
-  @Column({ type: 'text', nullable: true, transformer: DateTransformer })
+  @Column({ type: dateColumnType(), nullable: true, transformer: DateTransformer })
   lastActiveAt: Date | null;
 
   @CreateDateColumn()

@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Session } from '../../session/entities/session.entity';
 import { DateTransformer } from '../../../common/transformers/date.transformer';
+import { jsonColumnType, dateColumnType } from '../../../common/utils/column-types';
 
 @Entity('webhooks')
 export class Webhook {
@@ -25,13 +26,13 @@ export class Webhook {
   @Column({ type: 'varchar', length: 2048 })
   url: string;
 
-  @Column({ type: 'simple-json', default: '["message.received"]' })
+  @Column({ type: jsonColumnType(), default: '["message.received"]' })
   events: string[];
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   secret: string | null;
 
-  @Column({ type: 'simple-json', default: '{}' })
+  @Column({ type: jsonColumnType(), default: '{}' })
   headers: Record<string, string>;
 
   @Column({ type: 'boolean', default: true })
@@ -40,7 +41,7 @@ export class Webhook {
   @Column({ type: 'int', default: 3 })
   retryCount: number;
 
-  @Column({ type: 'text', nullable: true, transformer: DateTransformer })
+  @Column({ type: dateColumnType(), nullable: true, transformer: DateTransformer })
   lastTriggeredAt: Date | null;
 
   @CreateDateColumn()
