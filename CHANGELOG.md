@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-17
+
+### Added
+
+- **Unit Tests**: 94 new tests across auth, session, message, and webhook modules (110 total, ~17% coverage)
+- **Release Workflow**: `release.yml` GitHub Actions — tag-triggered with test gate, GitHub Release, and Docker semver tagging
+- **SDK Scaffolds**: JavaScript/TypeScript and Python client libraries in `sdk/` directory
+- New hook events: `webhook:queued` (after queue add) and `webhook:delivered` (after actual delivery)
+
 ### Fixed
 
 - **[P1] Idempotency Key**: Made `generateIdempotencyKey` deterministic by removing `Date.now()`. Keys are now content-based for proper deduplication
@@ -14,10 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[P2] Hook Semantics**: Added `webhook:queued` event for queue mode; `webhook:after` now only fires in direct mode
 - **[P2] QueueModule DI**: Added `TypeOrmModule.forFeature([Webhook])` and `HooksModule` imports for proper dependency injection
 - **[P3] Message Processor**: Changed placeholder to throw error so BullMQ correctly marks job as failed
-
-### Added
-
-- New hook events: `webhook:queued` (after queue add) and `webhook:delivered` (after actual delivery)
 
 ## [0.1.0] - 2026-02-05
 
