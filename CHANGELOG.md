@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-02-18
+
+### Fixed
+
+- **[P1] Database safety**: Default `DATABASE_SYNCHRONIZE` to false to prevent auto-schema changes in production
+- **[P1] Graceful shutdown**: Replace `process.exit()` with ShutdownService callback pattern
+- **[P1] PostgreSQL types**: Use native `jsonb` and `timestamp` column types when available
+- **[P1] Docker orchestration**: Remove duplicate Docker management from main.ts (use DockerService)
+- **[P1] Queue stub**: Remove unimplemented message queue processor that always threw errors
+- **[P2] Error visibility**: Add proper logging to all 12 empty catch blocks across backend services
+- **[P2] Type safety**: Reduce `any` usage from 38 to ~4 with typed interfaces for whatsapp-web.js
+- **[P2] Data consistency**: Add TypeORM transaction support for session CRUD; save-before-send pattern for messages
+- **[P2] Dashboard crashes**: Add ErrorBoundary with fallback UI instead of white screen of death
+- **[P2] Dashboard security**: Move API key from localStorage to sessionStorage (cleared on browser close)
+- **[P2] Dashboard UX**: Replace blocking `alert()` calls with Toast notifications
+- **[P2] Dashboard error handling**: Add logging to all empty catch blocks in dashboard pages
+
+### Changed
+
+- **Dashboard React Query**: Migrate all 8 pages from manual `useState`/`useEffect` to `@tanstack/react-query` with automatic caching and deduplication
+- **Dashboard code splitting**: Route-level lazy loading with `React.lazy` + `Suspense` — main bundle reduced 36%
+
+### Added
+
+- **CI npm audit**: `npm audit --audit-level=high` in CI pipeline to catch vulnerabilities
+- **CI coverage threshold**: Jest coverage floor to prevent regression
+- **CI dashboard job**: Lint + build for React dashboard runs parallel with backend CI
+- **Dependabot**: Automated dependency updates — npm weekly, GitHub Actions monthly
+
 ## [0.1.1] - 2026-02-17
 
 ### Added
