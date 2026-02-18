@@ -12,6 +12,7 @@ import { Infrastructure } from './pages/Infrastructure';
 import Plugins from './pages/Plugins';
 import { ToastProvider } from './components/Toast';
 import { RoleProvider, useRole, type UserRole } from './hooks/useRole';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 function AppContent() {
@@ -96,9 +97,11 @@ function AppContent() {
 
 function App() {
   return (
-    <RoleProvider>
-      <AppContent />
-    </RoleProvider>
+    <ErrorBoundary>
+      <RoleProvider>
+        <AppContent />
+      </RoleProvider>
+    </ErrorBoundary>
   );
 }
 
