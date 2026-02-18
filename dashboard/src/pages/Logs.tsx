@@ -10,6 +10,7 @@ export function Logs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -26,8 +27,9 @@ export function Logs() {
       const result = await auditApi.list(params);
       setLogs(result.data);
       setTotal(result.total);
-    } catch {
-      // Handle error
+    } catch (err) {
+      console.error('Failed to fetch logs:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load logs');
     } finally {
       setLoading(false);
     }

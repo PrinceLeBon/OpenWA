@@ -42,8 +42,8 @@ export function MessageTester() {
         const readySessions = data.filter(s => s.status === 'ready');
         setSessions(readySessions);
         if (readySessions.length > 0) setSession(readySessions[0].id);
-      } catch {
-        // Handle error
+      } catch (err) {
+        console.error('Failed to fetch sessions:', err);
       } finally {
         setLoadingSessions(false);
       }

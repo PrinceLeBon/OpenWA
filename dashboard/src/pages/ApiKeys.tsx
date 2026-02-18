@@ -37,6 +37,7 @@ export function ApiKeys() {
   useDocumentTitle('API Keys');
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
   const [newKey, setNewKey] = useState({ name: '', role: 'operator' });
@@ -69,8 +70,9 @@ export function ApiKeys() {
       setLoading(true);
       const data = await apiKeyApi.list();
       setApiKeys(data);
-    } catch {
-      // Handle error
+    } catch (err) {
+      console.error('Failed to fetch API keys:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load API keys');
     } finally {
       setLoading(false);
     }

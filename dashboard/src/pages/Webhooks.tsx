@@ -61,8 +61,8 @@ export function Webhooks() {
       ]);
       setWebhooks(webhooksData);
       setSessions(sessionsData);
-    } catch {
-      // Handle error
+    } catch (err) {
+      console.error('Failed to fetch webhooks:', err);
     } finally {
       setLoading(false);
     }
