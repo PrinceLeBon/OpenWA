@@ -1,45 +1,24 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Send, Webhook, Activity, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
-import { sessionApi, webhookApi, type Session, type SessionStats } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useSessionsQuery, useSessionStatsQuery, useWebhooksQuery, useStopSessionMutation } from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import './Dashboard.css';
 
 export function Dashboard() {
   useDocumentTitle('Dashboard');
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [stats, setStats] = useState<SessionStats | null>(null);
-  const [webhookCount, setWebhookCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const [sessionsData, statsData, webhooksData] = await Promise.all([
-          sessionApi.list(),
-          sessionApi.getStats(),
-          webhookApi.listAll().catch(() => []),
-        ]);
-        setSessions(sessionsData);
-        setStats(statsData);
-        setWebhookCount(webhooksData.length);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
+  const { data: sessions = [], isLoading: loadingSessions, error: sessionsError } = useSessionsQuery();
+  const { data: stats } = useSessionStatsQuery();
+  const { data: webhooks = [] } = useWebhooksQuery();
+  const stopMutation = useStopSessionMutation();
+  const loading = loadingSessions;
+  const error = sessionsError instanceof Error ? sessionsError.message : sessionsError ? 'Failed to load data' : null;
+  const webhookCount = webhooks.length;
 
   const handleDisconnect = async (id: string) => {
     try {
-      await sessionApi.stop(id);
-      setSessions(sessions.map(s => (s.id === id ? { ...s, status: 'disconnected' } : s)));
+      await stopMutation.mutateAsync(id);
     } catch (err) {
       console.error('Failed to disconnect:', err);
     }

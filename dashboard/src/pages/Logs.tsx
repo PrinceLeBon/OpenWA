@@ -1,41 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Download, Search, Filter, Loader2, FileText } from 'lucide-react';
-import { auditApi, type AuditLog } from '../services/api';
+import type { AuditLog } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useLogsQuery } from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import './Logs.css';
 
 export function Logs() {
   useDocumentTitle('Audit Logs');
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [page, setPage] = useState(1);
   const limit = 20;
 
-  const fetchLogs = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params: { severity?: string; limit: number; offset: number } = {
-        limit,
-        offset: (page - 1) * limit,
-      };
-      if (severityFilter !== 'all') params.severity = severityFilter;
-      const result = await auditApi.list(params);
-      setLogs(result.data);
-      setTotal(result.total);
-    } catch {
-      // Handle error
-    } finally {
-      setLoading(false);
-    }
-  }, [severityFilter, page, limit]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+  const severityParam = severityFilter !== 'all' ? severityFilter : undefined;
+  const { data, isLoading: loading } = useLogsQuery({ severity: severityParam, page, limit });
+  const logs: AuditLog[] = data?.data ?? [];
+  const total: number = data?.total ?? 0;
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch =
