@@ -15,6 +15,7 @@ import {
 import { infraApi } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { PageHeader } from '../components/PageHeader';
+import { useToast } from '../components/Toast';
 import './Infrastructure.css';
 
 // Watermark icons
@@ -83,6 +84,7 @@ interface RateLimitConfig {
 
 export function Infrastructure() {
   useDocumentTitle('Infrastructure');
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showRestartModal, setShowRestartModal] = useState(false);
@@ -291,10 +293,10 @@ export function Infrastructure() {
         setPendingProfiles(result.profiles || []);
         setShowRestartModal(true);
       } else {
-        alert('Failed to save configuration: ' + result.message);
+        toast.error('Save Failed', result.message);
       }
     } catch (err) {
-      alert('Failed to save configuration: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast.error('Save Failed', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setSaving(false);
     }

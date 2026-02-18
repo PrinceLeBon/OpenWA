@@ -19,6 +19,7 @@ import { pluginsApi, infraApi } from '../services/api';
 import type { Plugin, Engine } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { PageHeader } from '../components/PageHeader';
+import { useToast } from '../components/Toast';
 import './Plugins.css';
 
 type PluginType = 'engine' | 'storage' | 'queue' | 'auth' | 'extension';
@@ -40,6 +41,7 @@ interface EngineConfig {
 
 export default function Plugins() {
   useDocumentTitle('Plugins');
+  const toast = useToast();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [engines, setEngines] = useState<Engine[]>([]);
   const [currentEngine, setCurrentEngine] = useState<string>('');
@@ -112,9 +114,13 @@ export default function Plugins() {
     setActionLoading(pluginId);
     try {
       const result = await pluginsApi.healthCheck(pluginId);
-      alert(result.healthy ? `✓ Healthy: ${result.message}` : `✗ Unhealthy: ${result.message}`);
+      if (result.healthy) {
+        toast.success('Health Check Passed', result.message);
+      } else {
+        toast.warning('Health Check Failed', result.message);
+      }
     } catch (err) {
-      alert(`Health check failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error('Health Check Error', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setActionLoading(null);
     }
@@ -129,10 +135,10 @@ export default function Plugins() {
     setSavingConfig(true);
     try {
       // For now, show a success message - actual implementation would call API
-      alert('Configuration saved! Server restart required to apply changes.');
+      toast.success('Configuration Saved', 'Server restart required to apply changes.');
       setShowConfigModal(false);
     } catch (err) {
-      alert(`Failed to save config: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error('Save Failed', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setSavingConfig(false);
     }
