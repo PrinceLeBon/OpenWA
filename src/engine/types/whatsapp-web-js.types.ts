@@ -7,7 +7,7 @@ import { Chat, Client, Message } from 'whatsapp-web.js';
 /**
  * WhatsApp Group Chat with group-specific properties and methods.
  */
-export interface GroupChat extends Chat {
+export interface GroupChat extends Omit<Chat, 'isReadOnly' | 'getLabels'> {
   participants: Array<{
     id: { _serialized: string; user: string };
     name?: string;
@@ -36,7 +36,7 @@ export interface GroupChat extends Chat {
 /**
  * WhatsApp Message with reaction methods.
  */
-export interface MessageWithReactions extends Message {
+export interface MessageWithReactions extends Omit<Message, 'hasReaction' | 'getReactions' | 'react'> {
   react(emoji: string): Promise<void>;
   hasReaction?: boolean;
   getReactions(): Promise<
@@ -50,7 +50,7 @@ export interface MessageWithReactions extends Message {
 /**
  * WhatsApp Business Client with label and channel methods.
  */
-export interface BusinessClient extends Client {
+export interface BusinessClient extends Omit<Client, 'subscribeToChannel' | 'unsubscribeFromChannel' | 'getLabels' | 'getLabelById' | 'getChannels' | 'getChannelById'> {
   getLabels(): Promise<Array<{ id: string; name: string; hexColor: string }>>;
   getLabelById(id: string): Promise<{ id: string; name: string; hexColor: string } | null>;
   getChannels(): Promise<WwjsChannelData[]>;

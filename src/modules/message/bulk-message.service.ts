@@ -67,7 +67,7 @@ export class BulkMessageService {
       batchId,
       sessionId,
       status: BatchStatus.PENDING,
-      messages: dto.messages,
+      messages: dto.messages as MessageBatch['messages'],
       options,
       progress,
       results: [],
