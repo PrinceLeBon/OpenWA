@@ -16,15 +16,15 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 function AppContent() {
-  // Initialize from localStorage to avoid setState in effect
-  const savedKey = localStorage.getItem('openwa_api_key');
+  // Initialize from sessionStorage to avoid setState in effect
+  const savedKey = sessionStorage.getItem('openwa_api_key');
   const [isAuthenticated, setIsAuthenticated] = useState(!!savedKey);
   const [, setApiKey] = useState(savedKey || '');
   const { setRole, role } = useRole();
 
   const handleLogin = async (key: string) => {
     setApiKey(key);
-    localStorage.setItem('openwa_api_key', key);
+    sessionStorage.setItem('openwa_api_key', key);
 
     // Fetch the role from API
     try {
@@ -48,7 +48,7 @@ function AppContent() {
     setApiKey('');
     setIsAuthenticated(false);
     setRole(null);
-    localStorage.removeItem('openwa_api_key');
+    sessionStorage.removeItem('openwa_api_key');
   };
 
   // Re-validate and get role on mount if already authenticated
