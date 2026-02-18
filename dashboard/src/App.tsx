@@ -1,19 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { Layout } from './components/Layout';
-import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { Sessions } from './pages/Sessions';
-import { Webhooks } from './pages/Webhooks';
-import { Logs } from './pages/Logs';
-import { ApiKeys } from './pages/ApiKeys';
-import { MessageTester } from './pages/MessageTester';
-import { Infrastructure } from './pages/Infrastructure';
-import Plugins from './pages/Plugins';
 import { ToastProvider } from './components/Toast';
 import { RoleProvider, useRole, type UserRole } from './hooks/useRole';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
+
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Sessions = lazy(() => import('./pages/Sessions').then(m => ({ default: m.Sessions })));
+const Webhooks = lazy(() => import('./pages/Webhooks').then(m => ({ default: m.Webhooks })));
+const Logs = lazy(() => import('./pages/Logs').then(m => ({ default: m.Logs })));
+const ApiKeys = lazy(() => import('./pages/ApiKeys').then(m => ({ default: m.ApiKeys })));
+const MessageTester = lazy(() => import('./pages/MessageTester').then(m => ({ default: m.MessageTester })));
+const Infrastructure = lazy(() => import('./pages/Infrastructure').then(m => ({ default: m.Infrastructure })));
+const Plugins = lazy(() => import('./pages/Plugins'));
 
 function AppContent() {
   // Initialize from sessionStorage to avoid setState in effect
@@ -70,13 +72,20 @@ function AppContent() {
       });
   }, [savedKey, setRole]);
 
+  const loadingFallback = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <Loader2 className="animate-spin" size={32} />
+    </div>
+  );
+
   if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+    return <Suspense fallback={loadingFallback}><Login onLogin={handleLogin} /></Suspense>;
   }
 
   return (
     <ToastProvider>
       <BrowserRouter>
+        <Suspense fallback={loadingFallback}>
         <Routes>
           <Route path="/" element={<Layout onLogout={handleLogout} userRole={role} />}>
             <Route index element={<Dashboard />} />
@@ -90,6 +99,7 @@ function AppContent() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </ToastProvider>
   );
