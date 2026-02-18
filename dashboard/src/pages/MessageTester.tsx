@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Send, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { sessionApi, messageApi, type Session } from '../services/api';
+import { messageApi } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useRole } from '../hooks/useRole';
+import { useSessionsQuery, useSessionGroupsQuery } from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import './MessageTester.css';
 
@@ -13,66 +14,42 @@ interface ApiResponse {
   error?: string;
 }
 
-interface Group {
-  id: string;
-  name: string;
-}
-
 export function MessageTester() {
   useDocumentTitle('Message Tester');
   const { canWrite } = useRole();
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const { data: allSessions = [], isLoading: loadingSessions } = useSessionsQuery();
+  const sessions = allSessions.filter(s => s.status === 'ready');
   const [session, setSession] = useState('');
   const [recipient, setRecipient] = useState('');
   const [recipientType, setRecipientType] = useState<'personal' | 'group'>('personal');
-  const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroup, setSelectedGroup] = useState('');
-  const [loadingGroups, setLoadingGroups] = useState(false);
   const [messageType, setMessageType] = useState<'text' | 'image' | 'video' | 'audio' | 'document'>('text');
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
-  const [loadingSessions, setLoadingSessions] = useState(true);
 
+  const { data: groups = [], isLoading: loadingGroups } = useSessionGroupsQuery(
+    session,
+    recipientType === 'group',
+  );
+
+  // Auto-select first session
   useEffect(() => {
-    async function fetchSessions() {
-      try {
-        const data = await sessionApi.list();
-        const readySessions = data.filter(s => s.status === 'ready');
-        setSessions(readySessions);
-        if (readySessions.length > 0) setSession(readySessions[0].id);
-      } catch (err) {
-        console.error('Failed to fetch sessions:', err);
-      } finally {
-        setLoadingSessions(false);
-      }
+    if (sessions.length > 0 && !session) {
+      setSession(sessions[0].id);
     }
-    fetchSessions();
-  }, []);
+  }, [sessions, session]);
 
-  // Fetch groups when session changes and recipientType is group
+  // Auto-select first group
   useEffect(() => {
-    if (!session || recipientType !== 'group') {
-      setGroups([]);
+    if (groups.length > 0 && !selectedGroup) {
+      setSelectedGroup(groups[0].id);
+    }
+    if (recipientType !== 'group') {
       setSelectedGroup('');
-      return;
     }
-
-    async function fetchGroups() {
-      setLoadingGroups(true);
-      try {
-        const groupList = await sessionApi.getGroups(session);
-        setGroups(groupList);
-        if (groupList.length > 0) setSelectedGroup(groupList[0].id);
-      } catch {
-        setGroups([]);
-      } finally {
-        setLoadingGroups(false);
-      }
-    }
-    fetchGroups();
-  }, [session, recipientType]);
+  }, [groups, selectedGroup, recipientType]);
 
   const handleSend = async () => {
     // For groups, use selectedGroup; for personal, use recipient

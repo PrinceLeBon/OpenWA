@@ -11,9 +11,16 @@ import {
   Check,
   AlertTriangle,
 } from 'lucide-react';
-import { webhookApi, sessionApi, type Webhook, type Session } from '../services/api';
+import { webhookApi, type Webhook } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useRole } from '../hooks/useRole';
+import {
+  useWebhooksQuery,
+  useSessionsQuery,
+  useCreateWebhookMutation,
+  useUpdateWebhookMutation,
+  useDeleteWebhookMutation,
+} from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import './Webhooks.css';
 
@@ -29,9 +36,12 @@ const availableEvents = [
 export function Webhooks() {
   useDocumentTitle('Webhooks');
   const { canWrite } = useRole();
-  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: webhooks = [], isLoading: loadingWebhooks } = useWebhooksQuery();
+  const { data: sessions = [] } = useSessionsQuery();
+  const loading = loadingWebhooks;
+  const createMutation = useCreateWebhookMutation();
+  const updateMutation = useUpdateWebhookMutation();
+  const deleteMutation = useDeleteWebhookMutation();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -42,40 +52,20 @@ export function Webhooks() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 4000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [webhooksData, sessionsData] = await Promise.all([
-        webhookApi.listAll().catch(() => []),
-        sessionApi.list().catch(() => []),
-      ]);
-      setWebhooks(webhooksData);
-      setSessions(sessionsData);
-    } catch (err) {
-      console.error('Failed to fetch webhooks:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreate = async () => {
     if (!newWebhook.url || !newWebhook.sessionId) return;
     try {
-      const created = await webhookApi.create(newWebhook.sessionId, {
+      await createMutation.mutateAsync({
+        sessionId: newWebhook.sessionId,
         url: newWebhook.url,
         events: newWebhook.events,
       });
-      setWebhooks([...webhooks, created]);
       setShowCreateModal(false);
       setNewWebhook({ url: '', events: ['message.received'], sessionId: '' });
       setToast({ type: 'success', message: 'Webhook created successfully' });
@@ -95,8 +85,7 @@ export function Webhooks() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await webhookApi.delete(deleteTarget.sessionId, deleteTarget.id);
-      setWebhooks(webhooks.filter(w => w.id !== deleteTarget.id));
+      await deleteMutation.mutateAsync({ sessionId: deleteTarget.sessionId, id: deleteTarget.id });
       setShowDeleteModal(false);
       setDeleteTarget(null);
       setToast({ type: 'success', message: 'Webhook deleted successfully' });
@@ -135,12 +124,15 @@ export function Webhooks() {
   const handleEdit = async () => {
     if (!editWebhook) return;
     try {
-      const updated = await webhookApi.update(editWebhook.sessionId, editWebhook.id, {
-        url: editWebhook.url,
-        events: editWebhook.events,
-        active: editWebhook.active,
+      await updateMutation.mutateAsync({
+        sessionId: editWebhook.sessionId,
+        id: editWebhook.id,
+        data: {
+          url: editWebhook.url,
+          events: editWebhook.events,
+          active: editWebhook.active,
+        },
       });
-      setWebhooks(webhooks.map(w => (w.id === updated.id ? updated : w)));
       setShowEditModal(false);
       setEditWebhook(null);
       setToast({ type: 'success', message: 'Webhook updated successfully' });

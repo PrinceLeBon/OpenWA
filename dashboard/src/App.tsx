@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Layout } from './components/Layout';
 import { ToastProvider } from './components/Toast';
@@ -16,6 +17,16 @@ const ApiKeys = lazy(() => import('./pages/ApiKeys').then(m => ({ default: m.Api
 const MessageTester = lazy(() => import('./pages/MessageTester').then(m => ({ default: m.MessageTester })));
 const Infrastructure = lazy(() => import('./pages/Infrastructure').then(m => ({ default: m.Infrastructure })));
 const Plugins = lazy(() => import('./pages/Plugins'));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      retry: 1,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
 
 function AppContent() {
   // Initialize from sessionStorage to avoid setState in effect
@@ -108,9 +119,11 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <RoleProvider>
-        <AppContent />
-      </RoleProvider>
+      <QueryClientProvider client={queryClient}>
+        <RoleProvider>
+          <AppContent />
+        </RoleProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

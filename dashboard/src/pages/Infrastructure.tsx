@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { infraApi } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useInfraStatusQuery } from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import { useToast } from '../components/Toast';
 import './Infrastructure.css';
@@ -85,7 +86,7 @@ interface RateLimitConfig {
 export function Infrastructure() {
   useDocumentTitle('Infrastructure');
   const toast = useToast();
-  const [loading, setLoading] = useState(true);
+  const { data: infraStatus, isLoading: loading } = useInfraStatusQuery();
   const [saving, setSaving] = useState(false);
   const [showRestartModal, setShowRestartModal] = useState(false);
   const [restartCountdown, setRestartCountdown] = useState(0);
@@ -153,46 +154,35 @@ export function Infrastructure() {
     max: 100,
   });
 
-  // Fetch infrastructure status from API
+  // Populate config state from infra status query data
   useEffect(() => {
-    const fetchInfraStatus = async () => {
-      try {
-        const status = await infraApi.getStatus();
+    if (!infraStatus) return;
 
-        // Update configs with real data
-        setDbConfig(prev => ({
-          ...prev,
-          type: (status.database.type as 'sqlite' | 'postgres') || 'sqlite',
-          host: status.database.host || 'localhost',
-        }));
+    setDbConfig(prev => ({
+      ...prev,
+      type: (infraStatus.database.type as 'sqlite' | 'postgres') || 'sqlite',
+      host: infraStatus.database.host || 'localhost',
+    }));
 
-        setRedisConfig(prev => ({
-          ...prev,
-          host: status.redis.host,
-          port: String(status.redis.port),
-          connected: status.redis.connected,
-        }));
+    setRedisConfig(prev => ({
+      ...prev,
+      host: infraStatus.redis.host,
+      port: String(infraStatus.redis.port),
+      connected: infraStatus.redis.connected,
+    }));
 
-        setStorageConfig(prev => ({
-          ...prev,
-          type: status.storage.type,
-          localPath: status.storage.path || './uploads',
-        }));
+    setStorageConfig(prev => ({
+      ...prev,
+      type: infraStatus.storage.type,
+      localPath: infraStatus.storage.path || './uploads',
+    }));
 
-        setQueueEnabled(status.queue.enabled);
-        setQueueStats({
-          messages: status.queue.messages,
-          webhooks: status.queue.webhooks,
-        });
-      } catch (err) {
-        console.error('Failed to fetch infra status:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInfraStatus();
-  }, []);
+    setQueueEnabled(infraStatus.queue.enabled);
+    setQueueStats({
+      messages: infraStatus.queue.messages,
+      webhooks: infraStatus.queue.webhooks,
+    });
+  }, [infraStatus]);
 
   // Show loading state
   if (loading) {

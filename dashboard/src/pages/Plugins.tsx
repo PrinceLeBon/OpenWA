@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Puzzle,
   Power,
@@ -15,9 +16,16 @@ import {
   Zap,
   X,
 } from 'lucide-react';
-import { pluginsApi, infraApi } from '../services/api';
-import type { Plugin, Engine } from '../services/api';
+import { pluginsApi } from '../services/api';
+import type { Plugin } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import {
+  usePluginsQuery,
+  useEnginesQuery,
+  useCurrentEngineQuery,
+  useInfraStatusQuery,
+  queryKeys,
+} from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import { useToast } from '../components/Toast';
 import './Plugins.css';
@@ -42,57 +50,32 @@ interface EngineConfig {
 export default function Plugins() {
   useDocumentTitle('Plugins');
   const toast = useToast();
-  const [plugins, setPlugins] = useState<Plugin[]>([]);
-  const [engines, setEngines] = useState<Engine[]>([]);
-  const [currentEngine, setCurrentEngine] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: plugins = [], isLoading: loadingPlugins, error: queryError } = usePluginsQuery();
+  const { data: engines = [] } = useEnginesQuery();
+  const { data: currentEngineData } = useCurrentEngineQuery();
+  const { data: infraStatus } = useInfraStatusQuery();
+  const currentEngine = currentEngineData?.engineType ?? '';
+  const loading = loadingPlugins;
+  const error = queryError instanceof Error ? queryError.message : null;
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   // Config modal state
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configPlugin, setConfigPlugin] = useState<Plugin | null>(null);
   const [engineConfig, setEngineConfig] = useState<EngineConfig>({
-    type: 'whatsapp-web.js',
-    headless: true,
+    type: infraStatus?.engine?.type || 'whatsapp-web.js',
+    headless: infraStatus?.engine?.headless ?? true,
     sessionDataPath: '/data/sessions',
     browserArgs: '--no-sandbox --disable-gpu',
   });
   const [savingConfig, setSavingConfig] = useState(false);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [pluginsData, enginesData, currentEngineData, infraStatus] = await Promise.all([
-        pluginsApi.list(),
-        pluginsApi.getEngines(),
-        pluginsApi.getCurrentEngine(),
-        infraApi.getStatus(),
-      ]);
-      setPlugins(pluginsData);
-      setEngines(enginesData);
-      setCurrentEngine(currentEngineData.engineType);
-
-      // Load engine config from infra status
-      if (infraStatus.engine) {
-        setEngineConfig({
-          type: infraStatus.engine.type || 'whatsapp-web.js',
-          headless: infraStatus.engine.headless ?? true,
-          sessionDataPath: '/data/sessions',
-          browserArgs: '--no-sandbox --disable-gpu',
-        });
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load plugins');
-    } finally {
-      setLoading(false);
-    }
+  const refetchAll = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.plugins });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.engines });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.currentEngine });
   };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const handleToggle = async (plugin: Plugin) => {
     setActionLoading(plugin.id);
@@ -102,9 +85,9 @@ export default function Plugins() {
       } else {
         await pluginsApi.enable(plugin.id);
       }
-      await fetchData();
+      refetchAll();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to toggle plugin');
+      toast.error('Plugin Error', err instanceof Error ? err.message : 'Failed to toggle plugin');
     } finally {
       setActionLoading(null);
     }
@@ -155,7 +138,7 @@ export default function Plugins() {
     );
   }
 
-  const currentEngineData = engines.find(e => e.id === currentEngine);
+  const activeEngine = engines.find(e => e.id === currentEngine);
 
   return (
     <div className="plugins-page">
@@ -163,7 +146,7 @@ export default function Plugins() {
         title="Plugins"
         subtitle="Manage engines, storage backends, and extensions"
         actions={
-          <button className="btn-secondary" onClick={fetchData}>
+          <button className="btn-secondary" onClick={refetchAll}>
             <RefreshCw size={16} />
             Refresh
           </button>
@@ -194,17 +177,17 @@ export default function Plugins() {
         </div>
 
         {/* Engine Features */}
-        {currentEngineData && currentEngineData.features.length > 0 && (
+        {activeEngine && activeEngine.features.length > 0 && (
           <div className="engine-features">
             <p className="features-label">Supported Features:</p>
             <div className="features-list">
-              {currentEngineData.features.slice(0, 8).map(feature => (
+              {activeEngine.features.slice(0, 8).map(feature => (
                 <span key={feature} className="feature-tag">
                   {feature}
                 </span>
               ))}
-              {currentEngineData.features.length > 8 && (
-                <span className="feature-more">+{currentEngineData.features.length - 8} more</span>
+              {activeEngine.features.length > 8 && (
+                <span className="feature-more">+{activeEngine.features.length - 8} more</span>
               )}
             </div>
           </div>

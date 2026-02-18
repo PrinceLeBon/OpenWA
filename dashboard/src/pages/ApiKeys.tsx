@@ -7,8 +7,9 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table';
 import { Plus, Copy, RefreshCw, Trash2, Eye, EyeOff, Loader2, X, Check, KeyRound, AlertTriangle } from 'lucide-react';
-import { apiKeyApi, type ApiKey } from '../services/api';
+import type { ApiKey } from '../services/api';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useApiKeysQuery, useCreateApiKeyMutation, useDeleteApiKeyMutation, useRevokeApiKeyMutation } from '../hooks/queries';
 import { PageHeader } from '../components/PageHeader';
 import './ApiKeys.css';
 
@@ -35,9 +36,10 @@ const columnHelper = createColumnHelper<ApiKey>();
 
 export function ApiKeys() {
   useDocumentTitle('API Keys');
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [_error, setError] = useState<string | null>(null);
+  const { data: apiKeys = [], isLoading: loading } = useApiKeysQuery();
+  const createMutation = useCreateApiKeyMutation();
+  const deleteMutation = useDeleteApiKeyMutation();
+  const revokeMutation = useRevokeApiKeyMutation();
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [showModal, setShowModal] = useState(false);
   const [newKey, setNewKey] = useState({ name: '', role: 'operator' });
@@ -61,28 +63,10 @@ export function ApiKeys() {
     });
   }, [isMobile, isSmall]);
 
-  useEffect(() => {
-    fetchKeys();
-  }, []);
-
-  const fetchKeys = async () => {
-    try {
-      setLoading(true);
-      const data = await apiKeyApi.list();
-      setApiKeys(data);
-    } catch (err) {
-      console.error('Failed to fetch API keys:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load API keys');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreate = async () => {
     if (!newKey.name) return;
     try {
-      const created = await apiKeyApi.create({ name: newKey.name, role: newKey.role });
-      setApiKeys([...apiKeys, created]);
+      const created = await createMutation.mutateAsync({ name: newKey.name, role: newKey.role });
       setCreatedKey(created.apiKey || null);
       setNewKey({ name: '', role: 'operator' });
     } catch (err) {
@@ -92,8 +76,7 @@ export function ApiKeys() {
 
   const handleRevoke = async (id: string) => {
     try {
-      await apiKeyApi.revoke(id);
-      setApiKeys(apiKeys.map(k => (k.id === id ? { ...k, isActive: false } : k)));
+      await revokeMutation.mutateAsync(id);
     } catch (err) {
       console.error('Failed to revoke:', err);
     }
@@ -101,8 +84,7 @@ export function ApiKeys() {
 
   const handleDelete = async (id: string) => {
     try {
-      await apiKeyApi.delete(id);
-      setApiKeys(apiKeys.filter(k => k.id !== id));
+      await deleteMutation.mutateAsync(id);
     } catch (err) {
       console.error('Failed to delete:', err);
     }
