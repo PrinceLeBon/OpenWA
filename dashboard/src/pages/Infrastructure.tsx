@@ -299,13 +299,11 @@ export function Infrastructure() {
     // Compute profiles to remove (were enabled before, now disabled)
     const profilesToRemove = previousProfiles.filter(p => !pendingProfiles.includes(p));
 
-    let countdownTime = 30; // Default fallback
     try {
       const response = await infraApi.restart(pendingProfiles, profilesToRemove);
       // Use server-provided estimated time if available
       if (response.estimatedTime) {
-        countdownTime = response.estimatedTime;
-        setRestartCountdown(countdownTime);
+        setRestartCountdown(response.estimatedTime);
       }
     } catch {
       // Expected - server is shutting down, use default countdown
