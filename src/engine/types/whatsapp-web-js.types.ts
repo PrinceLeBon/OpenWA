@@ -50,7 +50,10 @@ export interface MessageWithReactions extends Omit<Message, 'hasReaction' | 'get
 /**
  * WhatsApp Business Client with label and channel methods.
  */
-export interface BusinessClient extends Omit<Client, 'subscribeToChannel' | 'unsubscribeFromChannel' | 'getLabels' | 'getLabelById' | 'getChannels' | 'getChannelById'> {
+export interface BusinessClient extends Omit<
+  Client,
+  'subscribeToChannel' | 'unsubscribeFromChannel' | 'getLabels' | 'getLabelById' | 'getChannels' | 'getChannelById'
+> {
   getLabels(): Promise<Array<{ id: string; name: string; hexColor: string }>>;
   getLabelById(id: string): Promise<{ id: string; name: string; hexColor: string } | null>;
   getChannels(): Promise<WwjsChannelData[]>;
