@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { BadRequestException } from '@nestjs/common';
 import { Client, LocalAuth, MessageMedia } from 'whatsapp-web.js';
 import * as qrcode from 'qrcode';
 import * as path from 'path';
@@ -271,11 +272,15 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
 
   async sendTextMessage(chatId: string, text: string): Promise<MessageResult> {
     this.ensureReady();
-    const msg = await this.client!.sendMessage(chatId, text);
-    return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
-    };
+    try {
+      const msg = await this.client!.sendMessage(chatId, text);
+      return {
+        id: msg.id._serialized,
+        timestamp: msg.timestamp,
+      };
+    } catch (error) {
+      this.handleSendError(error, chatId);
+    }
   }
 
   async sendImageMessage(chatId: string, media: MediaInput): Promise<MessageResult> {
@@ -312,14 +317,18 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
       messageMedia = new MessageMedia(media.mimetype, media.data.toString('base64'), media.filename);
     }
 
-    const msg = await this.client!.sendMessage(chatId, messageMedia, {
-      caption: media.caption,
-    });
+    try {
+      const msg = await this.client!.sendMessage(chatId, messageMedia, {
+        caption: media.caption,
+      });
 
-    return {
-      id: msg.id._serialized,
-      timestamp: msg.timestamp,
-    };
+      return {
+        id: msg.id._serialized,
+        timestamp: msg.timestamp,
+      };
+    } catch (error) {
+      this.handleSendError(error, chatId);
+    }
   }
 
   async getContacts(): Promise<Contact[]> {
@@ -919,5 +928,24 @@ export class WhatsAppWebJsAdapter extends EventEmitter implements IWhatsAppEngin
     if (this.status !== EngineStatus.READY || !this.client) {
       throw new Error('WhatsApp client is not ready');
     }
+  }
+
+  /**
+   * Translates low-level WhatsApp/Puppeteer errors into meaningful NestJS exceptions.
+   * "No LID for user" means the recipient number is not on WhatsApp or is not yet
+   * resolved in the local contact store.
+   */
+  private handleSendError(error: unknown, chatId: string): never {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.includes('No LID for user')) {
+      throw new BadRequestException(
+        `The number "${chatId}" is not registered on WhatsApp or could not be resolved. ` +
+          `Verify the number format (e.g. 33612345678@c.us) and that the contact exists on WhatsApp.`,
+      );
+    }
+
+    // Re-throw unknown errors as-is
+    throw error;
   }
 }
