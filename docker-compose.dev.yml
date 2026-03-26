@@ -1,12 +1,16 @@
-# OpenWA - Docker Compose for Development
-# Quick Start: docker compose -f docker-compose.dev.yml up -d
+# OpenWA - Docker Compose for Development (Hot Reload)
+# Quick Start: docker compose -f docker-compose.dev.yml up
+#
+# Hot reload is enabled:
+#   - API (NestJS): auto-restarts on any src/ change via nest start --watch
+#   - Dashboard (Vite): HMR in-browser on any dashboard/src/ change
 
 services:
-  # API Backend
+  # API Backend — dev mode with watch
   openwa:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: openwa-api
     ports:
       - '127.0.0.1:2785:2785'
@@ -26,6 +30,12 @@ services:
       - WEBHOOK_MAX_RETRIES=3
       - QUEUE_ENABLED=false
     volumes:
+      # Mount source code for hot reload — node_modules stays inside the container
+      - ./src:/app/src
+      - ./nest-cli.json:/app/nest-cli.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+      # Persist data between restarts
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
@@ -39,16 +49,27 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
 
-  # Dashboard Frontend
+  # Dashboard Frontend — Vite dev server with HMR
   dashboard:
     build:
       context: ./dashboard
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: openwa-dashboard
     ports:
-      - '127.0.0.1:2886:80'
+      - '127.0.0.1:2886:2886'
+    environment:
+      - VITE_API_URL=http://openwa:2785
+    volumes:
+      # Mount source code for HMR — node_modules stays inside the container
+      - ./dashboard/src:/app/src
+      - ./dashboard/public:/app/public
+      - ./dashboard/index.html:/app/index.html
+      - ./dashboard/vite.config.ts:/app/vite.config.ts
+      - ./dashboard/tsconfig.json:/app/tsconfig.json
+      - ./dashboard/tsconfig.app.json:/app/tsconfig.app.json
+      - ./dashboard/tsconfig.node.json:/app/tsconfig.node.json
     depends_on:
       openwa:
         condition: service_healthy

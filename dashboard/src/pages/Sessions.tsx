@@ -142,30 +142,51 @@ export function Sessions() {
     try {
       await sessionApi.start(id);
       setSessions(sessions.map(s => (s.id === id ? { ...s, status: 'connecting' } : s)));
-      // Refresh sessions and then fetch QR
-      await fetchSessions();
-      handleShowQR(id);
     } catch (err) {
-      console.error('Failed to start:', err);
-      // Refresh sessions to get real status
-      await fetchSessions();
-      // If error is "already started", try to show QR anyway
-      if (err instanceof Error && err.message.includes('already started')) {
-        handleShowQR(id);
+      // If already started, that's fine — proceed to show QR
+      if (!(err instanceof Error && err.message.includes('already started'))) {
+        console.error('Failed to start:', err);
+        await fetchSessions();
+        return;
       }
     }
+
+    // Whether we just started or it was already running, fetch the QR
+    await fetchSessions();
+    handleShowQR(id);
   };
 
   const handleShowQR = async (id: string) => {
     // Find session name
     const session = sessions.find(s => s.id === id);
     const sessionName = session?.name || 'Unknown Session';
-    try {
-      const qr = await sessionApi.getQR(id);
-      setQrData({ sessionId: id, sessionName, qrCode: qr.qrCode });
-    } catch (err) {
-      console.error('Failed to get QR:', err);
-      setError('QR code not available yet. Try again in a moment.');
+
+    // Poll for QR with retries — the engine may take a few seconds to generate it
+    const maxAttempts = 10;
+    const retryDelay = 2000; // 2s between attempts
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const qr = await sessionApi.getQR(id);
+        setQrData({ sessionId: id, sessionName, qrCode: qr.qrCode });
+        return; // success
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+
+        // Session already authenticated — no QR needed
+        if (msg.includes('already authenticated')) {
+          await fetchSessions();
+          return;
+        }
+
+        // Still initializing — wait and retry
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        } else {
+          console.error('Failed to get QR after retries:', err);
+          toast.error('QR Code Unavailable', 'Could not retrieve QR code. Try stopping and restarting the session.');
+        }
+      }
     }
   };
 

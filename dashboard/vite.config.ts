@@ -11,9 +11,10 @@ export default defineConfig({
   },
   server: {
     port: 2886,
+    host: '0.0.0.0', // Required to be reachable from outside the container
     proxy: {
       '/api': {
-        target: 'http://localhost:2785',
+        target: process.env.VITE_API_URL || 'http://localhost:2785',
         changeOrigin: true,
         secure: false,
       },
